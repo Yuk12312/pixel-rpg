@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Pixel Adventure RPG v16 (大更新版)</title>
+<style>
+:root{--bg:#0f0f0f;--panel:#1a1a1a;--border:#444;--accent:#00e6b8;--gold:#ffcc00;--danger:#ff5555;--text:#eee}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:"Courier New",monospace;padding:8px;max-width:480px;margin:0 auto;line-height:1.4;font-size:13px}
+button{cursor:pointer;font-family:inherit;border-radius:6px;border:1px solid var(--border);background:#222;color:var(--text);padding:8px 10px;font-size:13px}
+button:active{background:#444}button:disabled{opacity:.45}
+.screen{display:none}.screen.active{display:block}
+#title-screen{text-align:center;padding-top:24px}
+#title-screen h1{color:var(--accent);font-size:22px;margin-bottom:6px}
+.subtitle{color:#888;margin-bottom:18px;font-size:12px}
+.menu-btn{display:block;width:100%;margin:6px 0;background:#222;color:var(--gold);border:1px solid #666;font-size:14px;padding:12px}
+.stats-panel{background:#1c1c1c;border:1px solid var(--border);padding:8px;border-radius:6px;margin-bottom:6px;display:grid;grid-template-columns:1fr 1fr;gap:2px 6px;font-size:12px}
+.stat-item{color:var(--accent)}.stat-full{grid-column:span 2}
+.map-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:2px;background:#1c1c1c;padding:6px;border-radius:6px;border:1px solid var(--border);margin-bottom:6px;text-align:center}
+.map-cell{background:#2a2a2a;height:38px;display:flex;align-items:center;justify-content:center;font-size:17px;border-radius:4px}
+.map-cell.player-here{background:#444;border:2px solid var(--accent)}
+.dialogue-box{background:#151515;border:2px solid #555;padding:8px;border-radius:6px;min-height:52px;margin-bottom:6px;font-size:12px}
+.log-box{background:#111;border:1px solid #333;padding:6px;height:90px;overflow-y:auto;margin-bottom:6px;font-size:11px;color:#bbb}
+.controls{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:6px}
+.ctrl-btn{background:#2a2a2a;color:#fff;border:1px solid #555;padding:10px;font-size:15px;font-weight:bold}
+.btn{background:#222;color:var(--gold);border:1px solid #666;padding:8px;width:100%;text-align:left;margin-bottom:4px;font-size:12px}
+.btn.danger{color:var(--danger)}.btn.small{padding:6px;font-size:11px}
+.battle-log{background:#111;border:1px solid #333;padding:6px;height:110px;overflow-y:auto;margin-bottom:6px;font-size:11px}
+.battle-actions{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.hp-bar{height:6px;background:#333;border-radius:3px;margin:2px 0;overflow:hidden}
+.hp-fill{height:100%;background:#0c0;transition:width .25s}
+.list-item{background:#1c1c1c;border:1px solid #444;padding:8px;margin-bottom:4px;border-radius:5px;display:flex;justify-content:space-between;align-items:center;gap:5px;flex-wrap:wrap}
+.tag{display:inline-block;padding:1px 4px;border-radius:3px;font-size:10px;margin-left:2px}
+.tag.gray{background:#666}.tag.green{background:#2a7a2a}.tag.purple{background:#6a2a9a}.tag.gold{background:#aa8822;color:#000}.tag.red{background:#aa2222}
+.flex{display:flex;gap:5px}.flex-1{flex:1}.text-center{text-align:center}.mt-6{margin-top:6px}.mb-6{margin-bottom:6px}
+.small{font-size:11px;color:#aaa}
+.quest-card{background:#1c1c1c;border:1px solid #444;padding:10px;margin-bottom:6px;border-radius:6px}
+.tab-bar{display:flex;gap:3px;margin-bottom:6px}
+.tab{flex:1;text-align:center;padding:7px;background:#222;border:1px solid #444;border-radius:4px;font-size:11px}
+.tab.active{background:#333;border-color:var(--accent);color:var(--accent)}
+</style>
+</head>
+<body>
+
+<div id="title-screen" class="screen active">
+  <h1>🧙 像素冒險 RPG</h1>
+  <div class="subtitle">v16 · 大更新版（改名 + 隨機事件 + 天氣 + 成就 + 寵物技能）</div>
+  <button class="menu-btn" onclick="startNewGame()">▶ 開始遊戲</button>
+  <button class="menu-btn" onclick="continueGame()">📂 繼續遊戲</button>
+  <button class="menu-btn" onclick="showScreen('setting-screen')">⚙️ 設定</button>
+</div>
+
+<div id="name-screen" class="screen">
+  <h2 class="text-center mb-6">輸入你的冒險者名字</h2>
+  <input id="player-name-input" type="text" maxlength="12" placeholder="輸入名字..." style="width:100%;padding:12px;background:#222;border:1px solid #666;color:#eee;border-radius:6px;font-size:16px;margin-bottom:12px;font-family:inherit">
+  <button class="menu-btn" onclick="confirmName()">確認名字</button>
+  <button class="btn" onclick="showScreen('title-screen')">← 返回</button>
+</div>
+
+<div id="mode-screen" class="screen">
+  <h2 class="text-center mb-6">選擇模式</h2>
+  <button class="menu-btn" onclick="selectMode('normal')">正常模式（300日）</button>
+  <button class="menu-btn" onclick="selectMode('endless')">無盡模式</button>
+  <button class="btn" onclick="showScreen('name-screen')">← 返回</button>
+</div>
+<div id="diff-screen" class="screen">
+  <h2 class="text-center mb-6">選擇難度</h2>
+  <button class="menu-btn" onclick="selectDiff('easy')">簡單</button>
+  <button class="menu-btn" onclick="selectDiff('normal')">一般</button>
+  <button class="menu-btn" onclick="selectDiff('hard')">困難</button>
+  <button class="btn" onclick="showScreen('mode-screen')">← 返回</button>
+</div>
+<div id="job-screen" class="screen">
+  <h2 class="text-center mb-6">選擇職業</h2>
+  <button class="menu-btn" onclick="selectJob('warrior')">戰士</button>
+  <button class="menu-btn" onclick="selectJob('mage')">法師</button>
+  <button class="menu-btn" onclick="selectJob('ranger')">遊俠</button>
+  <button class="menu-btn" onclick="selectJob('assassin')">刺客</button>
+  <button class="btn" onclick="showScreen('diff-screen')">← 返回</button>
+</div>
+<div id="skill-pick-screen" class="screen">
+  <h2 class="text-center mb-6">選擇初始技能</h2>
+  <div id="skill-pick-content"></div>
+</div>
+
+<div id="game-screen" class="screen">
+  <div class="stats-panel">
+    <div class="stat-item">❤️ <span id="hp">100</span>/<span id="maxHp">100</span></div>
+    <div class="stat-item">⭐ Lv <span id="level">1</span></div>
+    <div class="stat-item">⚔️ ATK <span id="atk">15</span></div>
+    <div class="stat-item">💰 <span id="gold">0</span></div>
+    <div class="stat-item">⚡ STA <span id="stamina">15</span>/<span id="maxStamina">15</span></div>
+    <div class="stat-item">📅 Day <span id="day">1</span></div>
+    <div class="stat-item">🧪 MP <span id="mp">30</span>/<span id="maxMp">30</span></div>
+    <div class="stat-item">🎯 AP <span id="ap">10</span>/<span id="maxAp">10</span></div>
+    <div class="stat-item stat-full">✨ EXP <span id="exp">0</span>/<span id="maxExp">50</span> | 🏅 <span id="rank">F</span></div>
+    <div class="stat-item stat-full">名氣 <span id="fame">0</span>（<span id="fameTitle">新手冒險者</span>）</div>
+    <div class="stat-item stat-full">👤 <span id="playerName">冒險者</span> | 天氣 <span id="weather">晴天</span></div>
+  </div>
+  <div class="map-grid" id="map"></div>
+  <div class="dialogue-box" id="dialogue">你站在冒險者村莊的入口。</div>
+  <div class="log-box" id="event-log"></div>
+  <div class="controls">
+    <button class="ctrl-btn" onclick="forceNextDay()">⏭</button>
+    <button class="ctrl-btn" onclick="move(0,-1)">⬆️</button>
+    <button class="ctrl-btn" onclick="showScreen('quest-screen')">📋</button>
+  </div>
+  <div class="controls">
+    <button class="ctrl-btn" onclick="move(-1,0)">⬅️</button>
+    <button class="ctrl-btn" onclick="move(0,1)">⬇️</button>
+    <button class="ctrl-btn" onclick="move(1,0)">➡️</button>
+  </div>
+  <div id="options"></div>
+  <div class="flex mt-6">
+    <button class="btn flex-1" onclick="showScreen('pet-screen')">🐾 寵物</button>
+    <button class="btn flex-1" onclick="showScreen('bag-screen')">🎒 背包</button>
+    <button class="btn flex-1" onclick="openMenu()">☰ 選單</button>
+  </div>
+</div>
+
+<div id="battle-screen" class="screen">
+  <div class="stats-panel">
+    <div class="stat-item">你 ❤️ <span id="b-hp">100</span> | MP <span id="b-mp">30</span> | 速 <span id="b-spd">10</span></div>
+    <div class="stat-item">敵 ❤️ <span id="e-hp">50</span> | 速 <span id="e-spd">8</span></div>
+  </div>
+  <div id="pet-battle-info" class="small" style="margin-bottom:4px"></div>
+  <div class="hp-bar"><div class="hp-fill" id="b-bar" style="width:100%"></div></div>
+  <div class="hp-bar"><div class="hp-fill" id="e-bar" style="width:100%;background:#f55"></div></div>
+  <div class="battle-log" id="battle-log"></div>
+  <div class="battle-actions" id="battle-actions"></div>
+</div>
+
+<div id="quest-screen" class="screen"><h2 class="text-center mb-6">📋 任務</h2><div id="quest-content"></div><button class="btn mt-6" onclick="showScreen('game-screen')">← 返回</button></div>
+<div id="bag-screen" class="screen"><h2 class="text-center mb-6">🎒 背包</h2><div class="tab-bar" id="bag-tabs"></div><div id="bag-content"></div><button class="btn mt-6" onclick="backFromMenu()">← 返回</button></div>
+<div id="pet-screen" class="screen"><h2 class="text-center mb-6">🐾 寵物</h2><div id="pet-content"></div><button class="btn mt-6" onclick="backFromMenu()">← 返回</button></div>
+<div id="setting-screen" class="screen"><h2 class="text-center mb-6">⚙️ 設定</h2><button class="btn danger" onclick="resetAll()">🗑️ 重置存檔</button><button class="btn mt-6" onclick="backFromMenu()">← 返回</button></div>
+<div id="guild-screen" class="screen"><h2 class="text-center mb-6">🏛️ 工會</h2><div id="guild-content"></div><button class="btn mt-6" onclick="backFromMenu()">← 返回</button></div>
+<div id="shop-screen" class="screen"><h2 class="text-center mb-6">🛒 商店</h2><div id="shop-content"></div><button class="btn mt-6" onclick="backFromMenu()">← 返回</button></div>
+<div id="alchemy-screen" class="screen"><h2 class="text-center mb-6">🧪 煉藥所</h2><div id="alchemy-content"></div><button class="btn mt-6" onclick="backFromMenu()">← 返回</button></div>
+<div id="blacksmith-screen" class="screen"><h2 class="text-center mb-6">⚒️ 鐵匠舖</h2><div id="blacksmith-content"></div><button class="btn mt-6" onclick="backFromMenu()">← 返回</button></div>
+<div id="skill-screen" class="screen"><h2 class="text-center mb-6">✨ 技能強化</h2><div id="skill-content"></div><button class="btn mt-6" onclick="backFromMenu()">← 返回</button></div>
+<div id="ruins-screen" class="screen"><h2 class="text-center mb-6">🕳️ 遺跡</h2><div id="ruins-content"></div><button class="btn mt-6" onclick="backFromMenu()">← 返回</button></div>
+
+<div id="ingame-menu" class="screen">
+  <h2 class="text-center mb-6">選單</h2>
+  <button class="menu-btn" onclick="saveGame();alert('已存檔');showScreen('game-screen')">💾 保存</button>
+  <button class="menu-btn" onclick="showScreen('setting-screen')">⚙️ 設定</button>
+  <button class="menu-btn" onclick="showScreen('game-screen')">← 返回遊戲</button>
+  <button class="btn danger mt-6" onclick="if(confirm('返回主界面？'))showScreen('title-screen')">🏠 返回主界面</button>
+</div>
+
+<script>
+const DIFF={easy:{stamina:20,monMul:0.75,bossMin:180},normal:{stamina:15,monMul:1,bossMin:280},hard:{stamina:10,monMul:1.35,bossMin:400}};
+const JOBS={
+warrior:{hp:30,atk:2,def:5,mp:10,ap:0,spd:8,crit:5,skills:[["重擊","強力攻擊",12],["堅守","提升防禦",8]]},
+mage:{hp:0,atk:8,def:0,mp:40,ap:0,spd:7,crit:8,skills:[["火球","火焰傷害",15],["冰霜","減速",12]]},
+ranger:{hp:10,atk:4,def:2,mp:20,ap:3,spd:12,crit:12,skills:[["精準射擊","高命中",10],["陷阱","持續傷害",14]]},
+assassin:{hp:5,atk:6,def:0,mp:15,ap:1,spd:14,crit:25,skills:[["背刺","高暴擊",11],["影襲","先手",13]]}
+};
+const RARITY=["一般","優良","稀有","史詩","傳說"];
+const RARITY_C=["gray","green","purple","gold","red"];
+const FAME_T=[{min:0,t:"新手冒險者"},{min:100,t:"見習冒險者"},{min:300,t:"正式冒險者"},{min:600,t:"精英冒險者"},{min:1000,t:"傳奇冒險者"}];
+const MONSTERS=[{name:"野狼",icon:"🐺",hp:35,atk:9,spd:10,r:1},{name:"史萊姆",icon:"🟢",hp:25,atk:6,spd:6,r:1},{name:"骷髏",icon:"💀",hp:45,atk:12,spd:7,r:2},{name:"蝙蝠",icon:"🦇",hp:20,atk:8,spd:13,r:1},{name:"哥布林",icon:"👺",hp:40,atk:11,spd:9,r:2},{name:"毒蛇",icon:"🐍",hp:28,atk:14,spd:11,r:2},{name:"石魔",icon:"🗿",hp:60,atk:10,spd:5,r:2},{name:"幽靈",icon:"👻",hp:30,atk:13,spd:12,r:3}];
+
+let G=null,battle=null,bagTab="cons",eventLog=[],availableQuests=[];
+
+function defaultGame(mode,diff,job){
+  const d=DIFF[diff],j=JOBS[job];
+  return {
+    mode,diff,job,name:window._playerName||"冒險者",day:1,x:2,y:2,
+    hp:100+j.hp,maxHp:100+j.hp,atk:15+j.atk,def:j.def,
+    mp:30+j.mp,maxMp:30+j.mp,spd:j.spd,crit:j.crit,
+    level:1,exp:0,maxExp:50,gold:200,
+    stamina:d.stamina,maxStamina:d.stamina,
+    ap:10+j.ap,maxAp:10+j.ap,
+    rank:"F",fame:0,permanentAtk:0,heroTitle:null,heroLevel:0,
+    bossRespawnDay:0,ruinsClears:0,weather:"晴天",
+    inv:{potion:3,mpPotion:1,food:2,capture:5,revive:1,atkPotion:0,defPotion:0,townScroll:1,skillStone:2,ore:{0:6,1:2},herb:{0:6,1:2},wood:{0:5,1:1}},
+    equip:{head:null,body:null,pants:null,shoes:null,weapon:null,necklace:null,ring:null},
+    skills:[],pets:[],activePet:null,mapEvents:{},gatherCount:0,commissions:[],refreshCost:5,ruinsFloor:1,ruinsHighest:1,
+    achievements:{firstKill:false,firstBoss:false,reach10:false,reach50:false,pet5:false,craft10:false},combo:0
+  };
+}
+
+function showScreen(id){
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+  if(id==="quest-screen")renderQuests();
+  if(id==="pet-screen")renderPets();
+  if(id==="bag-screen")renderBag();
+  if(id==="guild-screen")renderGuild();
+  if(id==="shop-screen")renderShop();
+  if(id==="alchemy-screen")renderAlchemy();
+  if(id==="blacksmith-screen")renderBlacksmith();
+  if(id==="skill-screen")renderSkillEnhance();
+  if(id==="ruins-screen")renderRuins();
+}
+function backFromMenu(){G?showScreen("game-screen"):showScreen("title-screen");}
+function openMenu(){showScreen("ingame-menu");}
+
+function startNewGame(){showScreen("name-screen");}
+function confirmName(){
+  const n=document.getElementById("player-name-input").value.trim()||"冒險者";
+  window._playerName=n.substring(0,12);
+  showScreen("mode-screen");
+}
+function selectMode(m){window._mode=m;showScreen("diff-screen");}
+function selectDiff(d){window._diff=d;showScreen("job-screen");}
+function selectJob(j){
+  window._job=j;
+  const sk=JOBS[j].skills;
+  let h=`<div class="small mb-6">選擇初始技能：</div>`;
+  sk.forEach((s,i)=>h+=`<button class="menu-btn" onclick="confirmSkill(${i})">${s[0]} (MP ${s[2]})<br><span class="small">${s[1]}</span></button>`);
+  document.getElementById("skill-pick-content").innerHTML=h;
+  showScreen("skill-pick-screen");
+}
+function confirmSkill(idx){
+  G=defaultGame(window._mode,window._diff,window._job);
+  const sk=JOBS[window._job].skills[idx];
+  G.skills.push({name:sk[0],desc:sk[1],mp:sk[2],enhance:0});
+  generateAvailableQuests();
+  addLog("開始冒險！選擇了技能【"+sk[0]+"】");
+  saveGame();updateUI();renderMap();checkTile();
+  showScreen("game-screen");
+}
+function continueGame(){
+  const raw=localStorage.getItem("pixel_rpg_v10");
+  if(!raw){alert("沒有存檔");return;}
+  G=JSON.parse(raw);
+  eventLog=G.eventLog||[];
+  availableQuests=G.availableQuests||[];
+  if(!availableQuests.length)generateAvailableQuests();
+  updateUI();renderMap();checkTile();renderLog();
+  showScreen("game-screen");
+}
+function saveGame(){if(!G)return;G.eventLog=eventLog.slice(-20);G.availableQuests=availableQuests;localStorage.setItem("pixel_rpg_v10",JSON.stringify(G));}
+function resetAll(){if(confirm("確定重置？")){localStorage.removeItem("pixel_rpg_v10");G=null;showScreen("title-screen");}}
+
+function addLog(msg){eventLog.push(msg);if(eventLog.length>30)eventLog.shift();renderLog();}
+function renderLog(){const el=document.getElementById("event-log");if(!el)return;el.innerHTML=eventLog.slice(-8).map(m=>`<div>${m}</div>`).join("");el.scrollTop=el.scrollHeight;}
+
+function updateUI(){
+  if(!G)return;
+  document.getElementById("hp").textContent=G.hp;document.getElementById("maxHp").textContent=G.maxHp;
+  document.getElementById("level").textContent=G.level;document.getElementById("atk").textContent=totalAtk();
+  document.getElementById("gold").textContent=G.gold;document.getElementById("stamina").textContent=G.stamina;
+  document.getElementById("maxStamina").textContent=G.maxStamina;document.getElementById("day").textContent=G.day;
+  document.getElementById("mp").textContent=G.mp;document.getElementById("maxMp").textContent=G.maxMp;
+  document.getElementById("ap").textContent=G.ap;document.getElementById("maxAp").textContent=G.maxAp;
+  document.getElementById("exp").textContent=G.exp;document.getElementById("maxExp").textContent=G.maxExp;
+  document.getElementById("rank").textContent=G.rank;document.getElementById("fame").textContent=G.fame;
+  let title=G.heroTitle||"新手冒險者";
+  if(!G.heroTitle){FAME_T.forEach(f=>{if(G.fame>=f.min)title=f.t;});}
+  document.getElementById("fameTitle").textContent=title;
+  if(document.getElementById("playerName"))document.getElementById("playerName").textContent=G.name||"冒險者";
+  if(document.getElementById("weather"))document.getElementById("weather").textContent=G.weather||"晴天";
+}
+function totalAtk(){return G.atk+G.permanentAtk+(G.equip.weapon?.atk||0)+(G.activePet?.atk||0);}
+function totalDef(){let d=G.def;["head","body","pants","shoes","necklace","ring"].forEach(s=>{if(G.equip[s])d+=(G.equip[s].def||0);});return d;}
+function totalSpd(){let s=G.spd+(G.activePet?.spd||0);["head","body","pants","shoes","necklace","ring","weapon"].forEach(slot=>{if(G.equip[slot]&&G.equip[slot].spd)s+=G.equip[slot].spd;});return s;}
+
+function getTile(k){const f={"2,2":{icon:"🏘️",type:"village"},"2,1":{icon:"🌲",type:"forest"},"3,2":{icon:"💀",type:"boss"},"0,0":{icon:"⛏️",type:"mine"},"4,0":{icon:"🌿",type:"herb"},"0,4":{icon:"🪵",type:"wood"},"4,4":{icon:"🕳️",type:"ruins"}};return f[k];}
+function renderMap(){
+  let h="";for(let y=0;y<5;y++)for(let x=0;x<5;x++){const k=`${x},${y}`,isP=x===G.x&&y===G.y;let icon=isP?"🧙‍♂️":"🟩";const t=getTile(k);if(t)icon=t.icon;const ev=G.mapEvents[k];if(!isP&&ev){if(ev.type==="res")icon=ev.icon;else if(ev.type==="mon")icon=ev.icon;}h+=`<div class="map-cell ${isP?"player-here":""}">${icon}</div>`;}
+  document.getElementById("map").innerHTML=h;
+}
+function refreshDaily(){
+  G.gatherCount=0;G.mapEvents={};G.refreshCost=5;generateAvailableQuests();
+  const weathers=["晴天","雨天","陰天","大霧","烈日"];
+  G.weather=weathers[Math.floor(Math.random()*weathers.length)];
+  addLog(`今日天氣：${G.weather}`);
+  if(G.weather==="雨天"){G.maxStamina=Math.max(8,G.maxStamina-2);}
+  else if(G.weather==="烈日"){G.atk+=2;}
+  else if(G.weather==="大霧"){G.spd=Math.max(5,G.spd-2);}
+  const keys=["0,0","4,0","0,4","1,1","3,3","1,3"];
+  keys.forEach(k=>{if(Math.random()<0.65){const types=[{res:"ore",icon:"⛏️"},{res:"herb",icon:"🌿"},{res:"wood",icon:"🪵"}];const t=types[Math.floor(Math.random()*3)];G.mapEvents[k]={type:"res",...t,rarity:Math.random()<0.65?0:(Math.random()<0.7?1:2)};}});
+  if(Math.random()<0.4){const mon=MONSTERS[Math.floor(Math.random()*MONSTERS.length)];const pos=`${Math.floor(Math.random()*5)},${Math.floor(Math.random()*5)}`;if(pos!=="2,2")G.mapEvents[pos]={type:"mon",name:mon.name,icon:mon.icon,hp:mon.hp,atk:mon.atk,spd:mon.spd,rarity:mon.r};}
+}
+
+function move(dx,dy){if(G.stamina<=0){nextDay();return;}if(G.ap<=0){dialogue("行動點不足");return;}const nx=G.x+dx,ny=G.y+dy;if(nx<0||nx>4||ny<0||ny>4)return;G.x=nx;G.y=ny;G.stamina--;G.ap--;renderMap();checkTile();updateUI();saveGame();if(G.stamina<=0){dialogue("體力耗盡");setTimeout(nextDay,600);}}
+function forceNextDay(){if(confirm("結束今日？"))nextDay();}
+function nextDay(){G.day++;if(G.mode==="normal"&&G.day>300){dialogue("300日已過");return;}G.stamina=G.maxStamina;G.maxAp=10+Math.floor(G.level/10)+(JOBS[G.job].ap||0);G.ap=G.maxAp;G.mp=G.maxMp;refreshDaily();addLog(`第 ${G.day} 日開始`);dialogue(`第 ${G.day} 日`);renderMap();updateUI();saveGame();}
+
+function checkTile(){
+  const k=`${G.x},${G.y}`,t=getTile(k),ev=G.mapEvents[k],opt=document.getElementById("options");opt.innerHTML="";
+  if(ev){if(ev.type==="res"){dialogue(`${ev.icon} ${ev.res}（${RARITY[ev.rarity]}）`);opt.innerHTML=`<button class="btn" onclick="gather('${k}')">採集</button>`;return;}if(ev.type==="mon"){dialogue(`${ev.icon} ${ev.name}`);opt.innerHTML=`<button class="btn" onclick="startBattle('${k}')">戰鬥</button>`;return;}}
+  if(!t){dialogue("平坦草地");return;}
+  if(t.type==="village"){dialogue("回到村莊");opt.innerHTML=`<button class="btn" onclick="rest()">旅店休息</button><button class="btn" onclick="showScreen('shop-screen')">🛒 商店</button><button class="btn" onclick="showScreen('guild-screen')">🏛️ 工會</button><button class="btn" onclick="showScreen('alchemy-screen')">🧪 煉藥所</button><button class="btn" onclick="showScreen('blacksmith-screen')">⚒️ 鐵匠舖</button><button class="btn" onclick="showScreen('skill-screen')">✨ 技能強化</button><button class="btn" onclick="showRarityUpgrade()">⬆️ 稀有度合成</button>`;}
+  else if(t.type==="forest"){dialogue("迷霧森林");opt.innerHTML=`<button class="btn" onclick="startForestBattle()">進入戰鬥</button>`;}
+  else if(t.type==="boss"){
+    if(G.day < G.bossRespawnDay){dialogue(`魔王尚未復活（還需 ${G.bossRespawnDay-G.day} 日）`);}
+    else{dialogue("魔王窟入口");opt.innerHTML=`<button class="btn" onclick="startBossBattle()">挑戰魔王</button>`;}
+  }
+  else if(t.type==="mine"||t.type==="herb"||t.type==="wood"){opt.innerHTML=`<button class="btn" onclick="gatherFixed('${t.type}')">採集</button>`;}
+  else if(t.type==="ruins"){showScreen("ruins-screen");}
+}
+function dialogue(t){document.getElementById("dialogue").textContent=t;}
+
+function gather(k){if(G.gatherCount>=6){dialogue("今日採集上限");return;}if(G.stamina<1||G.ap<1)return;G.stamina--;G.ap--;G.gatherCount++;const ev=G.mapEvents[k];if(!G.inv[ev.res])G.inv[ev.res]={};G.inv[ev.res][ev.rarity]=(G.inv[ev.res][ev.rarity]||0)+1;addLog(`採集到 ${ev.res}（${RARITY[ev.rarity]}）`);const gexp=6+Math.floor(Math.random()*5);G.exp+=gexp;addLog(`採集獲得 EXP+${gexp}`);while(G.exp>=G.maxExp){G.exp-=G.maxExp;G.level++;G.maxExp=Math.floor(G.maxExp*1.4);G.maxHp+=14;G.hp=G.maxHp;G.atk+=3;addLog(`升級！Lv.${G.level}`);}if(ev.res==="ore"&&Math.random()<0.08){G.inv.skillStone=(G.inv.skillStone||0)+1;addLog("採礦幸運獲得強化石！");}updateQuestProgress("Gather",1);delete G.mapEvents[k];updateUI();saveGame();checkTile();}
+function gatherFixed(type){if(G.gatherCount>=6){dialogue("今日採集上限");return;}if(G.stamina<1||G.ap<1)return;G.stamina--;G.ap--;G.gatherCount++;const map={mine:"ore",herb:"herb",wood:"wood"};const res=map[type],rar=Math.random()<0.7?0:1;if(!G.inv[res])G.inv[res]={};G.inv[res][rar]=(G.inv[res][rar]||0)+1;addLog(`採集到 ${res}（${RARITY[rar]}）`);const gexp=6+Math.floor(Math.random()*5);G.exp+=gexp;addLog(`採集獲得 EXP+${gexp}`);while(G.exp>=G.maxExp){G.exp-=G.maxExp;G.level++;G.maxExp=Math.floor(G.maxExp*1.4);G.maxHp+=14;G.hp=G.maxHp;G.atk+=3;addLog(`升級！Lv.${G.level}`);}if(type==="mine"&&Math.random()<0.08){G.inv.skillStone=(G.inv.skillStone||0)+1;addLog("採礦幸運獲得強化石！");}updateQuestProgress("Gather",1);updateUI();saveGame();}
+function rest(){G.hp=G.maxHp;G.mp=G.maxMp;nextDay();addLog("休息完畢");}
+
+/* ========== 戰鬥（含魔王狂暴） ========== */
+function startForestBattle(){if(G.ap<1){dialogue("AP不足");return;}G.ap--;const m=MONSTERS[Math.floor(Math.random()*MONSTERS.length)];const mul=(0.9+Math.random()*0.4)*(1+G.day*0.03)*DIFF[G.diff].monMul;startBattleWith({name:m.name,icon:m.icon,hp:Math.floor(m.hp*mul),atk:Math.floor(m.atk*mul),spd:m.spd,rarity:m.r,maxHp:0});}
+function startBossBattle(){
+  const sc=1+G.day*0.04+G.level*0.035;
+  let hp=Math.floor(320*sc*DIFF[G.diff].monMul);
+  hp=Math.max(hp,DIFF[G.diff].bossMin);
+  startBattleWith({name:"魔王",icon:"👿",hp,atk:Math.floor(28*sc),spd:9,rarity:4,maxHp:hp,isBoss:true,berserk:false});
+}
+function startBattle(k){const ev=G.mapEvents[k];startBattleWith({...ev,maxHp:ev.hp},k);}
+function startBattleWith(enemy,key){
+  enemy.maxHp=enemy.maxHp||enemy.hp;
+  battle={enemy,key,playerDef:false,log:[],order:[],idx:0};
+  const actors=[{type:"player",spd:totalSpd()}];
+  if(G.activePet&&G.activePet.hp>0)actors.push({type:"pet",spd:G.activePet.spd||8});
+  actors.push({type:"enemy",spd:enemy.spd});
+  actors.sort((a,b)=>b.spd-a.spd);
+  battle.order=actors;
+  showScreen("battle-screen");
+  updateBattleUI();
+  addBLog(`${enemy.icon} ${enemy.name} 出現！`);
+  nextActor();
+}
+function updateBattleUI(){
+  document.getElementById("b-hp").textContent=G.hp;document.getElementById("b-mp").textContent=G.mp;document.getElementById("b-spd").textContent=totalSpd();
+  document.getElementById("e-hp").textContent=battle.enemy.hp;document.getElementById("e-spd").textContent=battle.enemy.spd;
+  document.getElementById("b-bar").style.width=Math.max(0,G.hp/G.maxHp*100)+"%";document.getElementById("e-bar").style.width=Math.max(0,battle.enemy.hp/battle.enemy.maxHp*100)+"%";
+  const petEl=document.getElementById("pet-battle-info");
+  if(G.activePet&&G.activePet.hp>0)petEl.textContent=`寵物 ${G.activePet.name} ❤️${G.activePet.hp}/${G.activePet.maxHp} 速${G.activePet.spd}`;
+  else petEl.textContent="";
+}
+function addBLog(m){battle.log.push(m);const el=document.getElementById("battle-log");el.innerHTML=battle.log.slice(-7).map(l=>`<div>${l}</div>`).join("");el.scrollTop=el.scrollHeight;}
+function nextActor(){
+  if(battle.enemy.hp<=0){endBattle(true);return;}
+  if(G.hp<=0){addBLog("你被擊敗了……");endBattle(false);return;}
+  // 魔王狂暴檢查
+  if(battle.enemy.isBoss && !battle.enemy.berserk && battle.enemy.hp < battle.enemy.maxHp*0.5){
+    battle.enemy.berserk=true;
+    battle.enemy.atk=Math.floor(battle.enemy.atk*2);
+    battle.enemy.spd=Math.floor(battle.enemy.spd*2);
+    addBLog("🔥 魔王進入狂暴！全部屬性提升100%！");
+  }
+  const act=battle.order[battle.idx%battle.order.length];battle.idx++;
+  if(act.type==="player"){renderPlayerActions();return;}
+  if(act.type==="pet"){if(G.activePet&&G.activePet.hp>0)petAct();else nextActor();return;}
+  if(act.type==="enemy"){enemyAct();return;}
+}
+function renderPlayerActions(){
+  let h=`<button class="btn" onclick="pAct('attack')">⚔️ 攻擊</button><button class="btn" onclick="pAct('defend')">🛡️ 防禦</button>`;
+  G.skills.forEach((sk,i)=>{h+=`<button class="btn" onclick="pAct('skill',${i})">${sk.name} (MP ${sk.mp})</button>`;});
+  h+=`<button class="btn" onclick="pAct('item')">🧪 道具</button>`;
+  if(G.pets.filter(p=>p.hp>0).length>1)h+=`<button class="btn" onclick="pAct('switch')">換寵物</button>`;
+  h+=`<button class="btn" onclick="pAct('capture')">捕捉</button>`;
+  document.getElementById("battle-actions").innerHTML=h;
+}
+function pAct(a,skillIdx){
+  if(a==="attack"){let d=totalAtk();if(Math.random()*100<G.crit){d=Math.floor(d*1.7);addBLog("暴擊！");}battle.enemy.hp-=d;addBLog(`你造成 ${d} 傷害`);}
+  else if(a==="defend"){battle.playerDef=true;addBLog("防禦");}
+  else if(a==="skill"){const sk=G.skills[skillIdx||0];if(!sk){addBLog("無技能");return;}if(G.mp<sk.mp){addBLog("MP不足");return;}G.mp-=sk.mp;const d=totalAtk()+10+(sk.enhance||0)*5;battle.enemy.hp-=d;addBLog(`使用【${sk.name}】造成 ${d}`);}
+  else if(a==="item"){showItemMenu();return;}
+  else if(a==="switch"){switchPetMenu();return;}
+  else if(a==="capture"){tryCapture();return;}
+  updateBattleUI();if(battle.enemy.hp<=0){endBattle(true);return;}nextActor();
+}
+function petAct(){
+  const p=G.activePet;
+  if(Math.random()<0.3){const d=p.atk+8;battle.enemy.hp-=d;addBLog(`${p.name} 使用技能造成 ${d}`);}
+  else{const d=p.atk;battle.enemy.hp-=d;addBLog(`${p.name} 造成 ${d}`);}
+  updateBattleUI();if(battle.enemy.hp<=0){endBattle(true);return;}nextActor();
+}
+function enemyAct(){
+  let target=G;
+  if(G.activePet&&G.activePet.hp>0&&Math.random()<0.45)target=G.activePet;
+  let d=battle.enemy.atk;
+  if(target===G&&battle.playerDef){d=Math.floor(d*0.5);battle.playerDef=false;}
+  d=Math.max(1,d-(target===G?totalDef():0));
+  target.hp-=d;
+  addBLog(`${battle.enemy.name} 攻擊${target===G?"你":"寵物"}造成 ${d}`);
+  if(target!==G&&target.hp<=0){target.hp=0;addBLog(`${target.name} 昏倒！`);addLog(`寵物 ${target.name} 昏倒`);G.activePet=null;}
+  updateBattleUI();nextActor();
+}
+function showItemMenu(){document.getElementById("battle-actions").innerHTML=`<button class="btn small" onclick="useItem('potion')">回血 (${G.inv.potion||0})</button><button class="btn small" onclick="useItem('revive')">復活藥 (${G.inv.revive||0})</button><button class="btn small" onclick="renderPlayerActions()">取消</button>`;}
+function useItem(id){if((G.inv[id]||0)<=0){addBLog("沒有了");return;}G.inv[id]--;if(id==="potion"){G.hp=Math.min(G.maxHp,G.hp+50);addBLog("+50 HP");}if(id==="revive"){const p=G.pets.find(pp=>pp.hp<=0);if(p){p.hp=Math.floor(p.maxHp*0.5);addBLog(`復活了 ${p.name}`);G.activePet=p;}}updateBattleUI();nextActor();}
+function switchPetMenu(){let h="";G.pets.forEach((p,i)=>{if(p.hp>0&&p!==G.activePet)h+=`<button class="btn small" onclick="doSwitch(${i})">${p.name} ❤️${p.hp}</button>`;});h+=`<button class="btn small" onclick="renderPlayerActions()">取消</button>`;document.getElementById("battle-actions").innerHTML=h;}
+function doSwitch(i){G.activePet=G.pets[i];addBLog(`換成 ${G.activePet.name}`);updateBattleUI();nextActor();}
+function tryCapture(){if((G.inv.capture||0)<=0){addBLog("沒有捕捉球");return;}G.inv.capture--;let rate=0.3-battle.enemy.rarity*0.07;if(battle.enemy.isBoss)rate=0.04;rate+=(1-battle.enemy.hp/battle.enemy.maxHp)*0.35;if(Math.random()<rate){addBLog("捕捉成功！");const pet={id:Date.now(),name:battle.enemy.name,icon:battle.enemy.icon,rarity:battle.enemy.rarity,level:1,exp:0,maxExp:30,atk:Math.floor(battle.enemy.atk*0.55),hp:Math.floor(battle.enemy.maxHp*0.45),maxHp:Math.floor(battle.enemy.maxHp*0.45),spd:battle.enemy.spd};G.pets.push(pet);addLog(`捕捉到 ${pet.name}`);endBattle(true);}else{addBLog("捕捉失敗");nextActor();}}
+
+function endBattle(win){
+  if(win){
+    const exp=25+Math.floor(G.day/2),gold=20+Math.floor(G.day/3);
+    G.exp+=exp;G.gold+=gold;G.fame+=3;
+    addLog(`戰鬥勝利 EXP+${exp} 金幣+${gold}`);
+    updateQuestProgress("Hunt",1);
+    while(G.exp>=G.maxExp){G.exp-=G.maxExp;G.level++;G.maxExp=Math.floor(G.maxExp*1.4);G.maxHp+=14;G.hp=G.maxHp;G.atk+=3;addLog(`升級！Lv.${G.level}`);}
+    if(battle.key)delete G.mapEvents[battle.key];
+    if(G.activePet){G.activePet.exp=(G.activePet.exp||0)+12;while(G.activePet.exp>=(G.activePet.maxExp||30)){G.activePet.exp-=G.activePet.maxExp||30;G.activePet.level++;G.activePet.maxExp=Math.floor((G.activePet.maxExp||30)*1.3);G.activePet.atk+=2;G.activePet.maxHp+=6;G.activePet.hp=G.activePet.maxHp;addLog(`寵物 ${G.activePet.name} 升級！`);}}
+    
+    // 怪物掉落物資 + 裝備
+    if(Math.random()<0.5){
+      const drops=["ore","herb","wood"];
+      const res=drops[Math.floor(Math.random()*3)];
+      const rar=Math.random()<0.65?0:(Math.random()<0.7?1:(Math.random()<0.7?2:(Math.random()<0.6?3:4)));
+      if(!G.inv[res])G.inv[res]={};
+      G.inv[res][rar]=(G.inv[res][rar]||0)+1;
+      addLog(`掉落 ${res}（${RARITY[rar]}）！`);
+    }
+    if(Math.random()<0.15){G.inv.skillStone=(G.inv.skillStone||0)+1;addLog("掉落強化石！");}
+    if(Math.random()<0.18){
+      const slots=["head","body","pants","shoes","necklace","ring","weapon"];
+      const slot=slots[Math.floor(Math.random()*slots.length)];
+      const rar=Math.random()<0.6?0:(Math.random()<0.65?1:(Math.random()<0.6?2:(Math.random()<0.5?3:4)));
+      let item={name:RARITY[rar]+(slot==="weapon"?"劍":slot==="head"?"頭盔":slot==="body"?"鎧甲":slot==="pants"?"護腿":slot==="shoes"?"靴":slot==="necklace"?"項鏈":"戒指"),rarity:rar,enhance:0};
+      if(slot==="weapon"||slot==="ring")item.atk=6+rar*5;
+      else item.def=2+rar*2;
+      if(slot==="shoes")item.spd=1;
+      if(!G.equip[slot] || (G.equip[slot].rarity||0)<rar){
+        G.equip[slot]=item;
+        addLog(`掉落裝備【${item.name}】並自動裝備！`);
+      }else{
+        addLog(`掉落【${item.name}】但現有更好，已忽略`);
+      }
+    }
+    
+    // 魔王特殊獎勵
+    if(battle.enemy.isBoss){
+      G.bossRespawnDay = G.day + 6;
+      if(!G.heroTitle){
+        G.heroTitle = "勇者";
+        G.heroLevel = 1;
+        G.permanentAtk += 10;
+        G.equip.weapon = {name:"魔王劍",atk:25,rarity:4,enhance:0};
+        addLog("🎉 首次擊敗魔王！獲得稱號「勇者」、攻擊+10、紅色武器「魔王劍」");
+      }else{
+        G.heroLevel++;
+        G.heroTitle = "勇者+" + G.heroLevel;
+        G.permanentAtk += 10;
+        addLog(`🎉 再次擊敗魔王！稱號更新為「${G.heroTitle}」、攻擊+10`);
+      }
+    }
+  }else{
+    // 死亡後從城鎮復活
+    G.hp=G.maxHp;G.mp=G.maxMp;G.ap=G.maxAp;
+    G.x=2;G.y=2;
+    const loss=Math.floor(G.gold*0.15);
+    G.gold=Math.max(0,G.gold-loss);
+    G.fame=Math.max(0,G.fame-5);
+    addLog(`你被擊敗了……損失 ${loss}G，已在村莊復活`);
+    if(G.activePet){G.activePet.hp=Math.floor(G.activePet.maxHp*0.5);}
+  }
+  setTimeout(()=>{
+    if(G.fromRuins && win){
+      G.fromRuins=false;
+      G.ruinsFloor++;
+      G.ruinsHighest=Math.max(G.ruinsHighest,G.ruinsFloor);
+      addLog(`遺跡戰鬥結束，進入第 ${G.ruinsFloor} 層`);
+      showScreen("ruins-screen");
+      renderRuins();
+    }else{
+      G.fromRuins=false;
+      showScreen("game-screen");
+      updateUI();renderMap();checkTile();
+    }
+    saveGame();
+  },800);
+}
+
+function updateQuestProgress(type,amount){
+  G.commissions.forEach(c=>{
+    if(c.type===type && c.progress < c.need){
+      c.progress = Math.min(c.need, c.progress + amount);
+    }
+  });
+}
+
+function renderPets(){
+  const el=document.getElementById("pet-content");
+  if(!G.pets.length){el.innerHTML="<div class='small'>尚未擁有寵物</div>";return;}
+  el.innerHTML=G.pets.map((p,i)=>`
+    <div class="list-item">
+      <div>${p.icon} ${p.name} <span class="tag ${RARITY_C[p.rarity]}">${RARITY[p.rarity]}</span>
+        <div class="small">Lv.${p.level} EXP:${p.exp||0}/${p.maxExp||30} HP:${p.hp}/${p.maxHp}</div></div>
+      <div>
+        <button class="btn small" onclick="setActive(${i})">${G.activePet?.id===p.id?"出戰中":"出戰"}</button>
+        <button class="btn small danger" onclick="releasePet(${i})">放生</button>
+      </div>
+    </div>`).join("");
+}
+function setActive(i){G.activePet=G.pets[i];saveGame();renderPets();}
+function releasePet(i){if(confirm(`確定放生 ${G.pets[i].name}？`)){if(G.activePet===G.pets[i])G.activePet=null;G.pets.splice(i,1);addLog("放生了寵物");saveGame();renderPets();}}
+
+function generateAvailableQuests(){
+  availableQuests=[];
+  const types=[["Hunt","討伐怪物",3],["Gather","採集資源",4],["Explore","探索地點",2]];
+  for(let i=0;i<4;i++){
+    const t=types[Math.floor(Math.random()*3)];
+    availableQuests.push({type:t[0],desc:t[1],need:t[2]+Math.floor(Math.random()*2),progress:0,reward:35+Math.floor(Math.random()*40),fame:4});
+  }
+}
+function renderGuild(){
+  let h=`<div>冒險者等級 ${G.rank} | 名氣 ${G.fame}</div><div class="small mb-6">下次刷新費用：${G.refreshCost}G</div>`;
+  availableQuests.forEach((q,i)=>{
+    h+=`<div class="quest-card"><b>${q.type}</b> - ${q.desc}<div class="small">需求：${q.need} | 獎勵：${q.reward}G</div>
+      <button class="btn small mt-6" onclick="acceptQuest(${i})">接取</button></div>`;
+  });
+  h+=`<button class="btn mt-6" onclick="refreshQuests()">刷新任務列表 (${G.refreshCost}G)</button>`;
+  document.getElementById("guild-content").innerHTML=h;
+}
+function acceptQuest(i){if(G.commissions.length>=6){alert("任務已滿");return;}G.commissions.push({...availableQuests[i]});availableQuests.splice(i,1);addLog("接取了任務");saveGame();renderGuild();}
+function refreshQuests(){if(G.gold<G.refreshCost){alert("金幣不足");return;}G.gold-=G.refreshCost;G.refreshCost+=5;generateAvailableQuests();addLog(`刷新任務，下次 ${G.refreshCost}G`);updateUI();saveGame();renderGuild();}
+
+function renderQuests(){
+  let h=`<div class="small">目前 ${G.commissions.length}/6</div>`;
+  G.commissions.forEach((c,i)=>{
+    const canSubmit = c.progress >= c.need;
+    h+=`<div class="list-item"><div><b>${c.type}</b> ${c.desc}<div class="small">進度 ${c.progress}/${c.need} 獎勵 ${c.reward}G</div></div>
+      <div>
+        <button class="btn small" onclick="submitQ(${i})" ${!canSubmit?"disabled":""}>提交</button>
+        <button class="btn small danger" onclick="abandonQ(${i})">放棄</button>
+      </div></div>`;
+  });
+  h+=`<button class="btn mt-6" onclick="showScreen('guild-screen')">去工會</button>`;
+  document.getElementById("quest-content").innerHTML=h;
+}
+function submitQ(i){
+  const c=G.commissions[i];
+  if(c.progress < c.need)return;
+  
+  // 採集任務自動扣資源
+  if(c.type==="Gather"){
+    let needed = c.need;
+    let deducted = 0;
+    // 優先扣一般藥草/礦石/木材
+    ["herb","ore","wood"].forEach(res=>{
+      if(deducted >= needed)return;
+      for(let r=0;r<5;r++){
+        if(deducted >= needed)break;
+        const have = (G.inv[res]&&G.inv[res][r])||0;
+        if(have > 0){
+          const take = Math.min(have, needed - deducted);
+          G.inv[res][r] -= take;
+          deducted += take;
+        }
+      }
+    });
+    if(deducted < needed){alert("資源不足，無法提交");return;}
+  }
+  
+  G.gold += c.reward;
+  G.fame += c.fame || 5;
+  G.commissions.splice(i,1);
+  addLog(`完成任務 +${c.reward}G`);
+  updateUI();saveGame();renderQuests();
+}
+function abandonQ(i){if(confirm("放棄任務？")){G.commissions.splice(i,1);saveGame();renderQuests();}}
+
+function renderShop(){
+  let h=`<div class="small mb-6">金幣：${G.gold}</div><div class="small">=== 購買 ===</div>`;
+  const items=[{id:"potion",n:"回血藥",p:25},{id:"mpPotion",n:"回MP藥",p:30},{id:"food",n:"食物",p:20},{id:"capture",n:"捕捉球",p:40},{id:"revive",n:"復活藥",p:80},{id:"townScroll",n:"回城卷",p:50},{id:"skillStone",n:"強化石",p:60}];
+  items.forEach(s=>{
+    const own = (G.inv[s.id]||0);
+    h+=`<div class="list-item"><span>${s.n} - ${s.p}G（擁有 ${own}）</span><button class="btn small" onclick="buy('${s.id}',${s.p})">購買</button></div>`;
+  });
+  h+=`<div class="small mt-6">=== 賣出自己物品 ===</div>`;
+  ["potion","mpPotion","food","capture","revive","atkPotion","defPotion","townScroll"].forEach(id=>{
+    const n=G.inv[id]||0;
+    if(n>0){
+      const sellP=Math.floor((id==="revive"?40:id==="capture"?20:15));
+      h+=`<div class="list-item"><span>${id} ×${n} 可賣 ${sellP}G/個</span><button class="btn small" onclick="sellItem('${id}',${sellP})">賣出1個</button></div>`;
+    }
+  });
+  document.getElementById("shop-content").innerHTML=h;
+}
+function buy(id,p){if(G.gold<p){alert("金幣不足");return;}G.gold-=p;G.inv[id]=(G.inv[id]||0)+1;addLog(`購買了 ${id}`);updateUI();saveGame();renderShop();}
+function sellItem(id,p){if((G.inv[id]||0)<=0)return;G.inv[id]--;G.gold+=p;addLog(`賣出 ${id} +${p}G`);updateUI();saveGame();renderShop();}
+
+function renderAlchemy(){
+  const herb0=G.inv.herb[0]||0, herb1=G.inv.herb[1]||0;
+  let h=`<div class="small mb-6">藥草：一般 ${herb0} | 優良 ${herb1}</div>`;
+  const pots=[
+    {id:"potion",n:"回復藥",need:"2個一般藥草",cost:2,r:0},
+    {id:"mpPotion",n:"回MP藥",need:"2個一般藥草",cost:2,r:0},
+    {id:"revive",n:"復活藥",need:"3個一般藥草",cost:3,r:0},
+    {id:"atkPotion",n:"加攻藥",need:"2個優良藥草",cost:2,r:1},
+    {id:"defPotion",n:"加防藥",need:"2個優良藥草",cost:2,r:1}
+  ];
+  pots.forEach(p=>{
+    const own=G.inv[p.id]||0;
+    h+=`<div class="list-item"><div><b>${p.n}</b>（擁有 ${own}）<div class="small">需要：${p.need}</div></div><button class="btn small" onclick="craftPotion('${p.id}',${p.cost},${p.r})">合成</button></div>`;
+  });
+  document.getElementById("alchemy-content").innerHTML=h;
+}
+function craftPotion(id,cost,r){if((G.inv.herb[r]||0)<cost){alert("藥草不足");return;}G.inv.herb[r]-=cost;G.inv[id]=(G.inv[id]||0)+1;addLog(`合成了 ${id}`);saveGame();renderAlchemy();}
+
+function renderBlacksmith(){
+  let h=`<div class="small mb-6">強化石：${G.inv.skillStone||0}</div>`;
+  const groups=[["武器","weapon","劍",2,30,"atk"],["頭部","head","頭盔",2,25,"def"],["身體","body","鎧甲",3,40,"def"],["護腿","pants","護腿",2,30,"def"],["鞋子","shoes","靴",2,20,"def"],["項鏈","necklace","項鏈",2,35,"def"],["戒指","ring","戒指",2,35,"atk"]];
+  groups.forEach(([gname,slot,name,oreBase,goldBase,stat])=>{
+    h+=`<div class="quest-card"><b>${gname}</b>`;
+    for(let r=0;r<5;r++){
+      const oreNeed=oreBase+r, goldNeed=goldBase+r*40;
+      const base=stat==="atk"?8+r*6:3+r*3;
+      h+=`<button class="btn small" onclick="craftEquip('${slot}',${r})">${RARITY[r]}${name} ${stat.toUpperCase()}+${base}（${oreNeed}礦+${goldNeed}G）</button>`;
+    }
+    h+=`</div>`;
+  });
+  h+=`<div class="small mt-6">裝備強化請去背包裝備頁</div>`;
+  document.getElementById("blacksmith-content").innerHTML=h;
+}
+function craftEquip(slot,r){
+  const costs={weapon:[2,30],head:[2,25],body:[3,40],pants:[2,30],shoes:[2,20],necklace:[2,35],ring:[2,35]};
+  const c=costs[slot]||[2,30];
+  const oreNeed=c[0]+r, goldNeed=c[1]+r*40;
+  if((G.inv.ore[r]||0)<oreNeed||G.gold<goldNeed){alert("材料或金幣不足（需要"+RARITY[r]+"礦）");return;}
+  G.inv.ore[r]-=oreNeed;G.gold-=goldNeed;
+  let item={name:RARITY[r]+(slot==="weapon"?"劍":slot==="head"?"頭盔":slot==="body"?"鎧甲":slot==="pants"?"護腿":slot==="shoes"?"靴":slot==="necklace"?"項鏈":"戒指"),rarity:r,enhance:0};
+  if(slot==="weapon"||slot==="ring"){item.atk=8+r*6;}
+  else {item.def=3+r*3;}
+  if(slot==="shoes"){item.spd=1+Math.floor(r/2);}
+  G.equip[slot]=item;
+  addLog(`合成【${item.name}】成功！${item.atk?`ATK+${item.atk}`:""}${item.def?`DEF+${item.def}`:""}${item.spd?`SPD+${item.spd}`:""}`);
+  updateUI();saveGame();renderBlacksmith();
+}
+
+function renderSkillEnhance(){if(!G.skills.length){document.getElementById("skill-content").innerHTML="<div class='small'>無技能</div>";return;}let h=`<div class="small">強化石：${G.inv.skillStone||0}</div>`;G.skills.forEach((sk,i)=>{h+=`<div class="list-item"><div>${sk.name} +${sk.enhance||0} (MP ${sk.mp})</div><button class="btn small" onclick="enhSkill(${i})">強化</button></div>`;});document.getElementById("skill-content").innerHTML=h;}
+function enhSkill(i){if((G.inv.skillStone||0)<1){alert("強化石不足");return;}G.inv.skillStone--;if(Math.random()<Math.max(0.2,0.95-(G.skills[i].enhance||0)*0.1)){G.skills[i].enhance=(G.skills[i].enhance||0)+1;addLog(`${G.skills[i].name} 強化成功`);}else addLog("強化失敗");saveGame();renderSkillEnhance();}
+
+function renderRuins(){document.getElementById("ruins-content").innerHTML=`<div>目前層數：${G.ruinsFloor}/100</div><button class="btn mt-6" onclick="exploreRuins()">探索當前層 (1AP)</button>`;}
+function exploreRuins(){if(G.ap<1){alert("AP不足");return;}G.ap--;const f=G.ruinsFloor;if(f%10===0){addLog(`第 ${f} 層 Boss 戰勝利`);G.gold+=30+f;if(Math.random()<0.6){const rar=f>=50?3:f>=25?2:1;G.equip.necklace={name:RARITY[rar]+"項鏈",def:2+rar*2,rarity:rar};addLog("獲得飾品！");}G.ruinsFloor++;if(f===100){G.ruinsClears++;G.permanentAtk+=5*G.ruinsClears;G.ruinsFloor=1;addLog("通關第100層！永久攻擊提升");}}else{const r=Math.random();if(r<0.35){G.fromRuins=true;startForestBattle();return;}else if(r<0.5){G.hp=Math.max(1,G.hp-10);addLog("觸發陷阱");}else if(r<0.65){G.gold+=15;addLog("找到普通寶箱");}else addLog("無事發生");G.ruinsFloor++;}G.ruinsHighest=Math.max(G.ruinsHighest,G.ruinsFloor);updateUI();saveGame();renderRuins();}
+
+function renderBag(){
+  const tabs=[{id:"cons",n:"消耗品"},{id:"equip",n:"裝備"},{id:"mat",n:"材料"}];
+  document.getElementById("bag-tabs").innerHTML=tabs.map(t=>`<div class="tab ${bagTab===t.id?"active":""}" onclick="bagTab='${t.id}';renderBag()">${t.n}</div>`).join("");
+  let h="";
+  if(bagTab==="cons"){["potion","mpPotion","food","capture","revive","atkPotion","defPotion","townScroll"].forEach(k=>{const n=G.inv[k]||0;if(n>0)h+=`<div class="list-item"><span>${k} ×${n}</span><button class="btn small" onclick="useBag('${k}')">使用</button></div>`;});}
+  else if(bagTab==="equip"){
+    const slotNames={head:"頭盔",body:"鎧甲",pants:"護腿",shoes:"鞋子",weapon:"武器",necklace:"項鏈",ring:"戒指"};
+    h+=`<div class="small mb-6">總ATK ${totalAtk()} | 總DEF ${totalDef()} | 總SPD ${totalSpd()} | 強化石 ${G.inv.skillStone||0}</div>`;
+    ["head","body","pants","shoes","weapon","necklace","ring"].forEach(s=>{
+      const e=G.equip[s];
+      let info=e?`${e.name} <span class="tag ${RARITY_C[e.rarity||0]}">${RARITY[e.rarity||0]}</span> +${e.enhance||0}`:"空";
+      if(e){if(e.atk)info+=` ATK+${e.atk}`;if(e.def)info+=` DEF+${e.def}`;if(e.spd)info+=` SPD+${e.spd}`;}
+      h+=`<div class="list-item"><span>${slotNames[s]||s}: ${info}</span>${e?`<button class="btn small" onclick="enhanceEquip('${s}')">強化</button><button class="btn small danger" onclick="unequip('${s}')">卸下</button>`:""}</div>`;
+    });
+  }
+  else{["ore","herb","wood"].forEach(r=>{for(let i=0;i<5;i++){const n=(G.inv[r]&&G.inv[r][i])||0;if(n>0)h+=`<div class="list-item"><span>${r}（${RARITY[i]}）×${n}</span></div>`;}});}
+  document.getElementById("bag-content").innerHTML=h||"<div class='small'>空</div>";
+}
+function useBag(id){if((G.inv[id]||0)<=0)return;G.inv[id]--;if(id==="potion")G.hp=Math.min(G.maxHp,G.hp+50);if(id==="mpPotion")G.mp=Math.min(G.maxMp,G.mp+30);if(id==="food")G.ap=Math.min(G.maxAp,G.ap+3);if(id==="townScroll"){G.x=2;G.y=2;addLog("使用回城卷");renderMap();checkTile();}updateUI();saveGame();renderBag();}
+function unequip(slot){if(!G.equip[slot])return;addLog(`卸下了 ${G.equip[slot].name}`);G.equip[slot]=null;updateUI();saveGame();renderBag();}
+function enhanceEquip(slot){
+  const e=G.equip[slot];
+  if(!e)return;
+  if((G.inv.skillStone||0)<1){alert("強化石不足");return;}
+  const cur=e.enhance||0;
+  if(cur>=10){alert("已達最高強化+10");return;}
+  G.inv.skillStone--;
+  const rate=Math.max(0.25,0.9-cur*0.08);
+  if(Math.random()<rate){
+    e.enhance=cur+1;
+    if(e.atk)e.atk+=2+Math.floor(e.rarity/2);
+    if(e.def)e.def+=1+Math.floor(e.rarity/2);
+    if(e.spd)e.spd+=0.5;
+    addLog(`【${e.name}】強化成功至 +${e.enhance}！`);
+  }else{
+    addLog(`【${e.name}】強化失敗…`);
+  }
+  updateUI();saveGame();renderBag();
+}
+function showRarityUpgrade(){
+  let h=`<div class="small mb-6">3個低級材料 → 1個高級（適用於礦/藥草/木材）</div>`;
+  ["ore","herb","wood"].forEach(res=>{
+    for(let r=0;r<4;r++){
+      const have=(G.inv[res]&&G.inv[res][r])||0;
+      h+=`<div class="list-item"><span>${res} ${RARITY[r]} ×${have} → ${RARITY[r+1]}</span><button class="btn small" onclick="upgradeRarity('${res}',${r})">合成</button></div>`;
+    }
+  });
+  h+=`<button class="btn mt-6" onclick="checkTile()">← 返回</button>`;
+  document.getElementById("options").innerHTML=h;
+  dialogue("稀有度合成");
+}
+function upgradeRarity(res,r){
+  const have=(G.inv[res]&&G.inv[res][r])||0;
+  if(have<3){alert("需要至少3個");return;}
+  G.inv[res][r]-=3;
+  if(!G.inv[res][r+1])G.inv[res][r+1]=0;
+  G.inv[res][r+1]++;
+  addLog(`合成成功：3個${RARITY[r]}${res} → 1個${RARITY[r+1]}${res}`);
+  updateUI();saveGame();showRarityUpgrade();
+}
+</script>
+</body>
+</html>
